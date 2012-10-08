@@ -16,11 +16,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 import re, os, ProteomicMasses, sqlite3, StringIO, zipfile, time, ProteomicObjects as PObj
-#try:
-#    from lxml import etree
-#except ImportError:
 import xml.etree.cElementTree as etree
-    #print 'lxml is required to parse X!tandem files due to the namespaces employed'
 
 class AnyIterator(object):
     """
@@ -186,7 +182,6 @@ class MGFIterator(object):
             
     def saveIndex(self):
         path = self.indexFile
-        print 'building index for:',path
         if os.path.exists(path):
             raise Exception("Index file path: %s found, but appears incomplete"%path)
         f = open(path, 'wb')
@@ -234,10 +229,6 @@ class MGFIterator(object):
                     scanObj.charge = entry[1]
                     foundCharge = True
                 elif entry[0] == 'TITLE':
-#                    if self.titleMap:
-#                        pos = entry[1].find(',')
-#                        title = self.titleMap[int(entry[1][:entry[1].find(',')])]
-#                    else:
                     title = '='.join(entry[1:])
                     foundTitle = True
                     scanObj.title = title
@@ -265,7 +256,6 @@ class MGFIterator(object):
                     m = self.distillerParse.match(row)
                     if m:
                         self.titleMap[int(m.group(1))+1] = m.group(2)
-                pass
             elif 'BEGIN IONS' in row:
                 if self.rand:
                     pStart=self.f.tell()
@@ -297,7 +287,6 @@ class ThermoMSFIterator(object):
             raise Exception(TypeError,"Unknown Type of filename -- must be a file path")
         self.conn = sqlite3.connect(filename, check_same_thread=False)
         self.full = full
-        #self.conn.row_factory = sqlite3.Row
         self.cur = self.conn.cursor()
         sql = 'select * from fileinfos'
         self.cur.execute(sql)
@@ -320,13 +309,12 @@ class ThermoMSFIterator(object):
         for i in self.cur.fetchall():
             self.mods[i[0]] = i[1:]
         try:
-            #sql = 'select sp.spectrum,p.ConfidenceLevel,p.SearchEngineRank,p.Sequence,p.PeptideID,pp.ProteinID,p.SpectrumID from spectra sp left join peptides p on (p.SpectrumID=sp.UniqueSpectrumID) left join peptidesproteins pp on (p.PeptideID=pp.PeptideID) where p.PeptideID IS NOT NULL'
             if self.full:
                 sql = 'select GROUP_CONCAT(p.ConfidenceLevel),GROUP_CONCAT(p.SearchEngineRank),GROUP_CONCAT(p.Sequence),GROUP_CONCAT(p.PeptideID), GROUP_CONCAT(pp.ProteinID), p.SpectrumID, sh.Charge, sh.RetentionTime, sh.FirstScan, sh.LastScan, mp.FileID, sp.Spectrum from peptides p join peptidesproteins pp on (p.PeptideID=pp.PeptideID) left join spectrumheaders sh on (sh.SpectrumID=p.SpectrumID) left join spectra sp on (sp.UniqueSpectrumID=sh.UniqueSpectrumID) left join masspeaks mp on (sh.MassPeakID=mp.MassPeakID) where p.PeptideID IS NOT NULL and p.ConfidenceLevel <= ? and p.SearchEngineRank <= ? GROUP BY p.SpectrumID'
             else:
                 sql = 'select GROUP_CONCAT(p.ConfidenceLevel),GROUP_CONCAT(p.SearchEngineRank),GROUP_CONCAT(p.Sequence),GROUP_CONCAT(p.PeptideID), GROUP_CONCAT(pp.ProteinID), p.SpectrumID, sh.Charge, sh.RetentionTime, sh.FirstScan, sh.LastScan, mp.FileID from peptides p join peptidesproteins pp on (p.PeptideID=pp.PeptideID) left join spectrumheaders sh on (sh.SpectrumID=p.SpectrumID) left join masspeaks mp on (sh.MassPeakID=mp.MassPeakID) where p.PeptideID IS NOT NULL and p.ConfidenceLevel <= ? and p.SearchEngineRank <= ? GROUP BY p.SpectrumID'                
             self.cur.execute(sql,(confidence,rank))
-        except sqlite3.OperationalError:#older version
+        except sqlite3.OperationalError:#older version of PD created this file
             if self.full:
                 sql = 'select GROUP_CONCAT(p.ConfidenceLevel),GROUP_CONCAT(p.ConfidenceLevel),GROUP_CONCAT(p.Sequence),GROUP_CONCAT(p.PeptideID), GROUP_CONCAT(pp.ProteinID), p.SpectrumID, sh.Charge, sh.RetentionTime, sh.FirstScan, sh.LastScan, mp.FileID, sp.Spectrum from peptides p join peptidesproteins pp on (p.PeptideID=pp.PeptideID) left join spectrumheaders sh on (sh.SpectrumID=p.SpectrumID) left join spectra sp on (sp.UniqueSpectrumID=sh.UniqueSpectrumID) left join masspeaks mp on (sh.MassPeakID=mp.MassPeakID) where p.PeptideID IS NOT NULL and p.ConfidenceLevel = ? GROUP BY p.SpectrumID'
             else:
@@ -359,7 +347,7 @@ class ThermoMSFIterator(object):
             msInfo = zf.read(j)
             msStr = msInfo.split('\n') 
             stage = 0
-            #this is dirty, but unfortunately the fastest method at the moment
+            #this is dirty, but unfortunately the fastest method at the moment -- lxml/celementree is far too slow
             for row in msStr:
                 if stage == 0:
                     if 'FileID' in row:
@@ -435,7 +423,6 @@ class ThermoMSFIterator(object):
         for j in zf.namelist():
             msInfo = zf.read(j)
             msStr = msInfo.split('\n') 
-            #sIO = StringIO.StringIO('\n'.join(msStr[1:]))
             stage = 0
             #this is dirty, but unfortunately the fastest method at the moment
             for row in msStr:

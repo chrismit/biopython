@@ -42,10 +42,6 @@ class XTandemXMLIterator(object):
     """
     def __init__(self, filename, **kwrds):
         #parse in our X!Tandem xml file
-        if kwrds and kwrds['exclude']:
-            exclude = set(kwrds['exclude'])
-        else:
-            exclude = set()
         dom1 = etree.parse(filename)
         self.scanSplit = re.compile(r'[\s\t]')
         self.group = dom1.findall("group")
@@ -146,7 +142,7 @@ class XTandemXMLIterator(object):
             print 'wtf' 
     
 class MGFIterator(object):
-    def __init__(self, filename):
+    def __init__(self, filename, **kwrds):
         #load our index      
         tFile = list(filename)
         tFile.reverse()
@@ -234,6 +230,8 @@ class MGFIterator(object):
                     scanObj.title = title
                 elif entry[0] == 'RTINSECONDS':
                     scanObj.rt = entry[1]
+                else:
+                    scanObj.entry[0] = entry[1]
             else:
                 mz,intensity = self.scanSplit.split(row.strip())
                 scanObj.addScan(mz,intensity)

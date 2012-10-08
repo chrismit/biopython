@@ -303,6 +303,7 @@ PACKAGES = [
     'Bio.PopGen.FDist',
     'Bio.PopGen.GenePop',
     'Bio.PopGen.SimCoal',
+    'Bio.Proteomics',
     'Bio.Restriction',
     'Bio.Restriction._Update',
     'Bio.SCOP',

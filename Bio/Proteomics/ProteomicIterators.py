@@ -50,15 +50,12 @@ class XTandemXMLIterator(object):
     """
     def __init__(self, filename, **kwrds):
         #parse in our X!Tandem xml file
-<<<<<<< HEAD
         if kwrds and kwrds['exclude']:
             exclude = set(kwrds['exclude'])
         else:
             exclude = set()
         if isinstance(filename,file):
             filename = filename.name
-=======
->>>>>>> eae0506437c6909ae850ab691bdc502fdc191eda
         dom1 = etree.parse(filename)
         self.scanSplit = re.compile(r'[\s\t]')
         self.group = dom1.findall("group")

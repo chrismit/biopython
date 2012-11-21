@@ -26,7 +26,10 @@ class AnyIterator(object):
         ftype = os.path.splitext(filename)[1]
         iterTypes = ({'.xml':XTandemXMLIterator, '.msf':ThermoMSFIterator, '.mgf':MGFIterator})
         try:
-            self.ipointer = iterTypes[ftype](filename,kwrds)
+            if kwrds:
+                self.ipointer = iterTypes[ftype](filename,kwrds)
+            else:
+                self.ipointer = iterTypes[ftype](filename)
         except KeyError:
             return None
             
@@ -40,28 +43,12 @@ class XTandemXMLIterator(object):
     """
     Parser for X!Tandem XML Files.
     """
-    def __init__(self, filename, **kwrds):
+    def __init__(self, filename):
         #parse in our X!Tandem xml file
         dom1 = etree.parse(filename)
         self.scanSplit = re.compile(r'[\s\t]')
         self.group = dom1.findall("group")
         self.groupMap = {}
-        self.index = 0
-        self.startIter = True
-        #get our modifications
-#        self.xmods = {}
-#        iindex = len(self.group)-1
-#        while iindex>=0:
-#            ginfo = self.group[iindex]
-#            try:
-#                if ginfo.attrib['label'] == 'input parameters':
-#                    for i in ginfo.iter('note'):
-#                        if i.attrib['label'] == 'residue, modification mass':
-#                            self.xmods
-#                    break
-#            except KeyError:
-#                pass
-#            iindex-=1
         self.db = None
         
     def __iter__(self):
@@ -71,7 +58,8 @@ class XTandemXMLIterator(object):
         try:
             expect = group.attrib["expect"]
         except KeyError:
-            self.group.pop(self.index)
+            if self.group:
+                self.group.pop(0)
             self.next()
         subnote = list(group.iter("note"))
         for i in subnote:
@@ -119,30 +107,26 @@ class XTandemXMLIterator(object):
             scanObj.peptide = peptide
             scanObj.expect = pExpect
             scanObj.id = id
-            if self.startIter:
-                self.groupMap[id] = self.index
-                self.index+=1
+            self.groupMap[id] = scanObj
             scanObj.title = id
             scanObj.accession = note.text
         return scanObj
     
     def next(self):
         try:
-            group = self.group[self.index]
+            group = self.group.pop(0)
         except IndexError:
-            self.startIter = False
             raise StopIteration
         return self.parselxml(group)
                 
     def getScan(self, id):
-        index = self.groupMap[id]
         try:
-            return self.parselxml(self.group[index])
-        except IndexError:
-            print 'wtf' 
+            return self.groupMap[id]
+        except KeyError:
+            raise Exception(ValueError,"Id not found in scan index") 
     
 class MGFIterator(object):
-    def __init__(self, filename, **kwrds):
+    def __init__(self, filename):
         #load our index      
         tFile = list(filename)
         tFile.reverse()
@@ -317,7 +301,7 @@ class ThermoMSFIterator(object):
                 sql = 'select GROUP_CONCAT(p.ConfidenceLevel),GROUP_CONCAT(p.ConfidenceLevel),GROUP_CONCAT(p.Sequence),GROUP_CONCAT(p.PeptideID), GROUP_CONCAT(pp.ProteinID), p.SpectrumID, sh.Charge, sh.RetentionTime, sh.FirstScan, sh.LastScan, mp.FileID, sp.Spectrum from peptides p join peptidesproteins pp on (p.PeptideID=pp.PeptideID) left join spectrumheaders sh on (sh.SpectrumID=p.SpectrumID) left join spectra sp on (sp.UniqueSpectrumID=sh.UniqueSpectrumID) left join masspeaks mp on (sh.MassPeakID=mp.MassPeakID) where p.PeptideID IS NOT NULL and p.ConfidenceLevel = ? GROUP BY p.SpectrumID'
             else:
                 sql = 'select GROUP_CONCAT(p.ConfidenceLevel),GROUP_CONCAT(p.ConfidenceLevel),GROUP_CONCAT(p.Sequence),GROUP_CONCAT(p.PeptideID), GROUP_CONCAT(pp.ProteinID), p.SpectrumID, sh.Charge, sh.RetentionTime, sh.FirstScan, sh.LastScan, mp.FileID from peptides p join peptidesproteins pp on (p.PeptideID=pp.PeptideID) left join spectrumheaders sh on (sh.SpectrumID=p.SpectrumID) left join masspeaks mp on (sh.MassPeakID=mp.MassPeakID) where p.PeptideID IS NOT NULL and p.ConfidenceLevel = ? GROUP BY p.SpectrumID'
-            self.cur.execute(sql,(confidence))
+            self.cur.execute(sql,(confidence,))
         self.index = 0
             
     def getScan(self, specId, peptide):

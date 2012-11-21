@@ -23,7 +23,12 @@ class AnyIterator(object):
     Tries to figure out what iterator we want and use it
     """
     def __init__(self, filename, **kwrds):
-        ftype = os.path.splitext(filename)[1]
+        if isinstance(filename,file):
+            ftype = os.path.splitext(filename.name)[1]
+        elif isinstance(filename,(str,unicode)):
+            ftype = os.path.splitext(filename)[1]
+        else:
+            raise Exception(TypeError,"Unknown Type of filename -- must be a file handle or a file path")
         iterTypes = ({'.xml':XTandemXMLIterator, '.msf':ThermoMSFIterator, '.mgf':MGFIterator})
         try:
             if kwrds:
@@ -45,6 +50,12 @@ class XTandemXMLIterator(object):
     """
     def __init__(self, filename):
         #parse in our X!Tandem xml file
+        if kwrds and kwrds['exclude']:
+            exclude = set(kwrds['exclude'])
+        else:
+            exclude = set()
+        if isinstance(filename,file):
+            filename = filename.name
         dom1 = etree.parse(filename)
         self.scanSplit = re.compile(r'[\s\t]')
         self.group = dom1.findall("group")
@@ -265,6 +276,9 @@ class ThermoMSFIterator(object):
         lastSplit = re.compile(r'.+[/\\](.+)')
         if isinstance(filename,(str,unicode)):
             self.f = open(filename, 'rb')
+        elif isinstance(filename,file):
+            self.f = filename
+            filename = self.f.name
         else:
             raise Exception(TypeError,"Unknown Type of filename -- must be a file path")
         self.conn = sqlite3.connect(filename, check_same_thread=False)
